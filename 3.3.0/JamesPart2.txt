@@ -267,4 +267,4 @@ typo inside the xml file.
 "jmxName" tag must be different value for each smtpserver.
 6. Try to send mail / receive email from your real email account.
 
-<p style="font-size:11px">Documentation created June 2019</p>
+**Documentation created June 2019**
