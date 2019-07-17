@@ -206,41 +206,6 @@ to tell if it was successfull you should see at this line at the log showing up:
 INFO  [time.stamp] | org.apache.james.app.spring.JamesAppSpringMain | Apache James Server is successfully started in 11426 milliseconds.
 ===============
 
-Continue to part 2 : http://wiki.107.co.jp/user/jasontjankilisan/PersonalNoteUbuntuServerPt2
+Continue to part 2
 
-
-
-# Important Data about the server
-
-========!!Section still under construction!!===========
-PEM file location when Certbot created it :
-- /etc/letsencrypt/live/[domain name]/cert.pem
-- /etc/letsencrypt/live/[domain name]/fullchain.pem
-- /etc/letsencrypt/live/[domain name]/chain.pem
-- /etc/letsencrypt/live/[domain name]/privkey.pem
-
-Focus on 2 thing : FullChain and PrivKey Since it was the 2 thing it was mentioned (Maybe it was for the cacerts and keystore file)
-
-link about why SMTP have to be 25 (Still Need Research Since its from 2017, Gonna ask some people on JAMES APACHE)
-
-https://www.mail-archive.com/server-user@james.apache.org/msg15590.html
-
-For Jamer Server Log Testing
-INFO  05:45:38,482 | org.apache.james.app.spring.JamesAppSpringMain | Apache James Server is successfully started in 11113 milliseconds.
-
-For using Keytool Sudo for Lets Encrypt:
-cd /usr/lib/jvm/
-
-Setting up multiple port for 25 and 465 
-https://www.mail-archive.com/server-user@james.apache.org/msg15988.html (need to clean this place up)
-
-
-Dont forget sudo chmod +x service.sh to allow service to be used on startup by james3.service
-
-For JDKIM still need more research but Mr sano did CHMOD on the files
-
-EXTREMELY IMPORTANT FOR DKIM PURPOSES
-<b>(Letsencrypt was used for SSL Certification, NOT for DKIM and SPF Purposes)</b>
-
-<hr>
-<p style="font-size:11px">Documentation created June 2019</p>
+**Documentation created June 2019**
