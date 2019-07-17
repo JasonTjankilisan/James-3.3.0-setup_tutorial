@@ -1,0 +1,270 @@
+# PersonalNoteUbuntuServerPt2
+
+in this part 2, we will : 
+-Configure the server to become service
+-Adding our Domain and User to James Apache Server
+-Configure the server to have SSL/TLS protection when Receiving / Sending Mail
+-Create LetsEncrypt Keystore for SSL/TLS Protection
+-Use Thunderbird to check the mail delivery
+
+#Configure so the server proccess become a service
+We need to turn the startup proccess to a service so it runs on background 24/7.
+1. lets create a file named "service.sh" on james3/bin.
+===============
+$sudo vim service.sh
+// Add this inside the file //
+#!/bin/bash
+runuser -l jactare  -c "cd /home/jactare/james3/bin; sudo bash run.sh"
+// After that Save changes and run the service //
+$sudo bash service.sh
+===============
+it should show the same succesfull apache james server message as running sudo bash run.sh or stop at the memory log.
+this file works as executeable script when the server startup.
+ 
+3. Now we create james3.service on /etc/systemd/system.
+===============
+$cd /etc/systemd/system
+$sudo vim james3.service
+// add this to the file // 
+[Unit]
+Description =Apache Jamese Server Service
+ConditionPathExists=/home/jactare/james3/bin
+After=network.target
+[Service]
+User=root
+Group=root
+# WorkingDirectory=/home/jactare/james3/bin
+ExecStart =/home/jactare/james3/bin/service.sh
+Restart = always
+Type = simple
+RestartSec=60
+startLimitIntervalSec=90
+[Install]
+WantedBy = multi-user.target
+===============
+
+#Using systemctl to enable service
+From what i read, systemctl was used to manage service that's running when the server bootup.
+
+now we need to enable james3.service
+===============
+$cd /etc/systemd/system
+$sudo systemctl enable james3.service
+$sudo systemctl start james3.service
+$sudo systemctl status james3.service
+===============
+
+So we enable the service, starting it, and checking the status. 
+if you see the james3.service status is running from the status log, Service has run successfully then.
+
+!!!TAKE CAUTION!!! make sure that service.sh have executeable permission, To enable this go to /home/jactare/james3/bin 
+and use the command: "sudo chmod +x service.sh".
+
+#Adding Domain and User
+Lets go to where the file james-cli.sh is and add the Domain and the User:
+Add Domains and checking the domain listed: 
+===============
+cd /home/jactare/james3/bin
+$sudo bash james-cli.sh adddomain [domain name]
+E.X : $sudo bash james-cli.sh adddomain example.com 
+sudo bash james-cli.sh ListDomains
+// Add User and checking the user listed //
+$sudo bash james-cli.sh adduser [user name]
+E.X : $sudo bash james-cli.sh addduser info@jason.107.pc 
+sudo bash james-cli.sh listusers
+===============
+
+#Letsencrypt for Keystore
+
+Using SSL/TLS or StartTLS on the port of sending message required you to have SSL certification (to make sure you are trusted website)
+For this purpose, lets install letsencrypt.
+===============
+$ sudo apt-get update
+$ sudo apt-get install software-properties-common
+$ sudo add-apt-repository universe
+$ sudo add-apt-repository ppa:certbot/certbot
+$ sudo apt-get update
+$ sudo apt-get install certbot
+// Now we register our email //
+$sudo certbot certonly
+// Pick Option 1 and enter your Domain Name //
+===============
+
+You can locate the PEM file when Certbot created it in :
+- /etc/letsencrypt/live/[domain name]/cert.pem  -> Certificate
+- /etc/letsencrypt/live/[domain name]/chain.pem  -> Intermediate Certificate
+- /etc/letsencrypt/live/[domain name]/fullchain.pem  -> Certificate + Intermediate Certificate
+- /etc/letsencrypt/live/[domain name]/privkey.pem  -> Private Key
+
+For now we only need chain.pem and privkey.pem. Since this is a protected file, you may need "sudo su" to copy the files.
+===============
+$sudo su
+$cd /etc/letsencrypt/live/[domain name]/
+$cp /etc/letsencrypt/live/[domain name]/fullchain.pem your/directory/putthefile/here
+$cp /etc/letsencrypt/live/[domain name]/privkey.pem your/directory/putthefile/here
+===============
+
+Personally i did put it in my /home/[usernameinserver]/CertKey. now lets convert the .PEM file to jks so it can be used.
+===============
+keytool -import -alias "LetsEncriptFullChain" -file fullchain.pem -keystore fullchain.jks
+** if for some reason you cannot use "sudo keytool" and said the function not exist, you need to go /usr/lib/jvm/ **
+** put your fullchain.pem there and then run the command above and then move it back again to the folder **
+** Please remember the password you use for the creation of the file **
+===============
+
+for the privkey.pem, its a bit more complicated 
+(Reference : https://community.letsencrypt.org/t/combining-key-and-certificate-into-a-pkcs12-file/21113).
+===============
+$openssl pkcs12 -export -out privatekey.pkcs12 -inkey privkey.pem -in cert.pem -certfile chain.pem
+$keytool -importkeystore -destkeystore keystore.jks -srckeystore privatekey.pkcs12 -srcstoretype PKCS12
+// Same as above if you need sudo keytool and it say keytool not found //
+** Please remember the password you use for the creation of the file **
+===============
+
+you should have privatekey.jks and fullchain.jks . move them both to the james/conf/
+===============
+$sudo mv fullchain.jks /home/[usernameinserver]/james/conf/cacerts -> Renaming it cacerts
+$sudo mv privatekey.jks /home/[usernameinserver]/james/conf/keystore -> Renaming keystore
+===============
+
+Now these key and certificate are ready to be used in SMTP and IMAP for SSL/TLS Protection.
+
+#Using SSL/TLS Port for Sending and Received Message
+
+Now we need to set the IMAP, SMTP server to receive and sending email.we can do do that by editing these files : 
+imapserver.xml : 
+- Change the <Bind> tag to 0.0.0.0:993
+- Change socketTLS="true"
+- Change <Keystore> value to Path where you put your keystore
+===============
+42        <bind>0.0.0.0:993</bind>
+43
+44        <connectionBacklog>200</connectionBacklog>
+45
+46        <!-- Set to true to use TLS for the Socket.
+47              To use this you need to copy sunjce_provider.jar to /path/james/lib directory.
+48         -->
+49        <tls socketTLS="true" startTLS="false">
+50          <!-- To create a new keystore execute:
+51           keytool -genkey -alias james -keyalg RSA -keystore /path/to/james/conf/keystore
+52            -->
+53          <keystore>file://conf/keystore</keystore>
+54          <secret>passhere</secret>
+55          <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
+56        </tls>
+===============
+
+smtpserver.xml : we need port 25 to be open in order to receive email so firstly we changed the original setting on smtpserver.xml
+- Change startTLS="true"
+- Change <Keystore> value to Path where you put your keystore
+===============
+ 44      <bind>0.0.0.0:25</bind>
+ 45
+ 46      <connectionBacklog>200</connectionBacklog>
+ 47
+ 48      <!-- Set to true to support STARTTLS or TLS for the Socket.
+ 49            To use this you need to copy sunjce_provider.jar to /path/james/lib directory.
+ 50       -->
+ 51      <tls socketTLS="false" startTLS="true">
+ 52        <!-- To create a new keystore execute:
+ 53         keytool -genkey -alias james -keyalg RSA -keystore /path/to/james/conf/keystore
+ 54          -->
+ 55        <keystore>file://conf/keystore</keystore>
+ 56        <secret>pass</secret>
+ 57        <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
+ 58        <!-- The algorithm is optional and only needs to be specified when using something other
+ 59         than the Sun JCE provider - You could use IbmX509 with IBM Java runtime. -->
+ 60        <algorithm>SunX509</algorithm>
+ 61      </tls>
+===============
+
+And then add one new tag of <smtpserver> somewhere below it and make sure the <jmxName> is different from other <smtpserver>
+===============
+323 <smtpserver enabled="true">
+324	<jmxName>smtpSend</jmxName>
+325        <bind>0.0.0.0:465</bind>
+326
+327        <tls socketTLS="true" startTLS="false">
+328           <keystore>file://conf/keystore</keystore>
+329           <secret>pass</secret>
+330           <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
+331           <algorithm>SunX509</algorithm>
+332        </tls>
+333
+334        <connectiontimeout>360</connectiontimeout>
+335
+336        <connectionLimit>0</connectionLimit>
+337
+338        <connectionLimitPerIP>0</connectionLimitPerIP>
+339
+340        <authRequired>true</authRequired>
+341
+342        <authorizedAddresses>127.0.0.0/8</authorizedAddresses>
+343        <maxmessagesize>0</maxmessagesize>
+344        <addressBracketsEnforcement>true</addressBracketsEnforcement>
+345
+346        <handlerchain>
+347          <handler class="org.apache.james.smtpserver.fastfail.ValidRcptHandler"/>
+348          <handler class="org.apache.james.smtpserver.CoreCmdHandlerLoader"/>
+349        </handlerchain>
+350
+351  </smtpserver>
+===============
+
+Based on this thred on James : https://www.mail-archive.com/server-user@james.apache.org/msg15987.html (press "Next Message" to read the next reply)
+
+pop3server.xml (Optional since i dont use this) :
+- Change the <Bind> tag to 0.0.0.0:995
+- Change socketTLS="true"
+- Change <Keystore> value to Path where you put your keystore
+===============
+ 35        <jmxName>pop3server</jmxName>
+ 36
+ 37        <!-- Configure this to bind to a specific inetaddress -->
+ 38        <!-- port 995 is the well-known/IANA registered port for POP3S  ie over SSL/TLS -->
+ 39        <!-- port 110 is the well-known/IANA registered port for Standard POP3 -->
+ 40        <bind>0.0.0.0:995</bind>
+ 41
+ 42        <connectionBacklog>200</connectionBacklog>
+ 43
+ 44        <!-- Set to true to support STARTTLS or SSL for the Socket.
+ 45              To use this you need to copy sunjce_provider.jar to /path/james/lib directory.
+ 46         -->
+ 47        <tls socketTLS="true" startTLS="false">
+ 48            <!-- To create a new keystore execute:
+ 49                  keytool -genkey -alias james -keyalg RSA -keystore /path/to/james/conf/keystore
+ 50             -->
+ 51            <keystore>file://conf/keystore</keystore>
+ 52            <secret>pass</secret>
+ 53            <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
+ 54        </tls>
+===============
+
+We need to comment this part in mailetcontainer.xml to be able to send email : 
+===============
+    <mailet match="RemoteAddrNotInNetwork=127.0.0.1" class="ToProcessor">
+          <processor>relay-denied</processor>
+          <notice>550 - Requested action not taken: relaying denied</notice>
+    </mailet>
+===============
+
+run "sudo reboot" to restart the server and apply the changes. Now we need to test mail server to receive email / send email.
+
+#Thunderbird Setup
+https://www.thunderbird.net/id/ - Download thunderbird here
+
+This is a mail App to test your mail server if working.
+
+1. Install the Application and follow the instruction
+2. Open Thunderbird when done installing and Create New Account -> Email.
+3. Fill out the information and press continue (For additional info, "Your Name" name section can be anything) and press "Continue", Thunderbird will try to find your server configuration.
+4. after the proccess finish, click "Advanced Config" to manually input the setting for your server IMAP,SMTP,POP3. For this tutorial, we need to set the incoming using IMAP Port 993, and SMTP Port 465 with both of them using SSL/TLS and Normal Password.
+5. Re-test the result and if there;s no problem, you can apply the setting. If there's still error, consider the following :
+is your password correct?
+typo in filling the information.
+typo inside the xml file.
+"smtpserver" tag have to be inside the "smtpservers" tag.
+"jmxName" tag must be different value for each smtpserver.
+6. Try to send mail / receive email from your real email account.
+
+**Documentation created June 2019**

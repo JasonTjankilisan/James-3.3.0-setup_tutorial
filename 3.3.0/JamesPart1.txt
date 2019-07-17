@@ -1,0 +1,211 @@
+This is a personal note to setup server using ubuntu 18.04 WSL, windows 10, using James Apache Server 3.3.0. 
+
+Hopefully in the future can be used again to setup another james server or in case of creating backup server.
+
+in this part 1, we will : 
+-Get all the necessary files
+-Upload them to our server using SCP
+-Accessing our server using ssh
+-Unpack / Install all the component and checking if it was correctly installed
+
+**you can replace [] with your info**
+
+# Get the necessary
+1. Ubuntu 18.04 LTS for windows 10. https://www.microsoft.com/en-us/p/ubuntu-1804-lts/9n9tngvndl3q?activetab=pivot:overviewtab
+2. Java SE DevelopmentKit 8u212 for Linux (with tar.gz extension). https://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html
+3. Apache James Server 3.3.0. https://www-eu.apache.org/dist/james/server/3.3.0/james-server-app-3.3.0-app.zip 
+4. Private key for our VPS server (I received this one from my boss, maybe you get it after buying the VPS)
+5. Put all files in one directory for easier search (E.X = C:\yourdirectory).
+
+# Setting the environment
+1. Install Ubuntu and follow the instruction.
+2. Open Ubuntu, you will be asked to create an username first time running Ubuntu.
+3. After setting up the username, we will create directory to store private key for use later (Contabo).
+===============
+$sudo mkdir .ssh
+===============
+
+4. Move the private key to Ubuntu. This private key will be used to access our server.
+===============
+$sudo mv /mnt/c/yourdirectory/contabo /home/[username]/.ssh 
+===============
+Private key is ready to use! (dont forget to check with ls -a)
+
+5. Upload java using the private key to the server.
+===============
+$sudo cd /home/[username]/.ssh
+$sudo scp -i contabo /mnt/yourdirectory/jdk-8u212-linux-x64.tar.gz [usernameinserver]@[domainname]:/home/[usernameinserver]
+===============
+if it successfull, it will show the upload progress
+
+6. After java has been uploaded to the server, lets try login to the server (For this tutorial im gonna write using my domain and username).
+===============
+$cd .ssh
+$sudo ssh -p [port] -i contabo [usernameinserver]@[domain/sub-domainname]
+Example : $sudo ssh -p 512 -i contabo testname@example.com
+===============
+To summarize, we are connecting through port 512 and using the private key file named "contabo" to login to the server named testname@example.com
+
+7. after successful login, we can unzip the java file for the server to use.
+===============
+$sudo cd /home/[usernameinserver]
+$sudo tar  -xzf jdk-8u152-linux-x64.tar.gz
+$sudo mkdir -p /usr/lib/jvm
+$sudo mv jdk1.8.0_212 /usr/lib/jvm/
+$cd /usr/lib/jvm    
+$sudo ln -s jdk1.8.0_212 java-8-oracle-amd64
+===============
+after we unzip it, we create a directory in /usr/lib/jvm and then move the unzipped file into the directory. after we change directory to the newly made directory, we create a hard link for the java, later it will be used to configure our JAVA_PATH.
+
+8. For java to be recognized, we need to set the JAVA_PATH.
+===============
+$cd /home/jactare
+$sudo vim .bash_profile (I use vim in this case, you can use any text editior you want)
+// Add these information inside //
+export JAVA_HOME=/usr/lib/jvm/java-8-oracle-amd64
+export PATH=${JAVA_HOME}/bin:${PATH}
+===============
+Save the changes and exit. You can check if java id detected by running "echo $JAVA_HOME" and the output will be the folder destination of where the Java JDK unzipped.
+
+9. Now we need to edit permission for our account
+===============
+$sudo vim /etc/sudoers
+// Edit some of the information //
+Defaults        env_keep += "JAVA_HOME"
+Defaults        mail_badpass
+Defaults        secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"
+// Also add this information under %sudo, so we dont need password to use bash function //
+%sudo   ALL=(ALL:ALL) ALL
+jactare ALL=(ALL) NOPASSWD: /bin/bash
+===============
+
+# Getting MySQL
+
+I recommended to memorize this QUERY in case someone need cheat sheet to check the database
+===============
+SHOW TABLES FROM [database name]; = show all tables in the databases
+SHOW DATABASES; = show all databases
+DESCRIBE [table name]; = Show Column name and type of the written tables 
+USE [database name]; = refer the database so you dont have to write databasename.tableinside
+===============
+
+Lets install MySQL, create user and database for our James server.
+===============
+$sudo apt install mysql-server mysql-client
+// after finish installing //
+$sudo mysql
+===============
+
+Create a Database first before adding the user (James will use this database to generate Table on its own) :
+===============
+CREATE DATABASE [database name];
+===============
+These 2 query below will automatically give permission to edit the database named and all its tables while creating the user.
+```
+GRANT ALL PRIVILEGES ON [database name].* TO '[username]'@'[hostname]' IDENTIFIED BY '[password]';
+GRANT ALL PRIVILEGES ON [database name].* TO '[username]'@'[hostname]' IDENTIFIED BY '[password]'; WITH GRANT OPTION;FLUSH PRIVILEGES;
+```
+Congratulation, we created an user , you can try by exiting Mysql and login to Mysql (sudo mysql -u [username] -p) again using the user you created
+and you will be prompted to enter the password.
+
+# Setting the James
+Now that we already download the James file last time....
+1. Exit the server, and upload the james files
+===============
+$exit
+// Back to local Ubuntu //
+$sudo cd /home/[username]/.ssh
+$sudo scp -i contabo /mnt/c/james-server-app-3.3.0-app.zip [usernameinserver]@[domainname]:/home/[usernameinserver]
+===============
+
+2. Login to the server and unzip (personally i rename the james folder).
+===============
+$cd /home/[usernameinserver]
+$unzip james-server-app-3.3.0-app.zip
+$mv james-server-app-3.3.0 james3
+===============
+
+3. Configure James path so ubuntu recognize it.
+===============
+$cd /home/[usernameinserver]
+$sudo vim .bash_profile
+// Add the information below the java information //
+export JAMESPATH=$HOME/james3
+export PATH=$JAMESPATH/bin:$PATH
+===============
+Save any changes and exit the editor. As always you can echo the value to test if its registered.
+
+# Configurating UFW
+UFW is the firewall in ubuntu. we need to allow some port for our email server to receive and send email. So here's what i try :
+1. Checking the status of the UFW (Since we never did anything to the UFW, it should say disabled).
+===============
+$sudo ufw status
+===============
+
+2. Set the ufw default to block all ports, and then allow some port.These port will be used for our email.
+```
+$sudo ufw default deny
+$sudo ufw allow 22 
+$sudo ufw allow 80
+$sudo ufw allow 443
+$sudo ufw allow 22360
+$sudo ufw allow 465
+$sudo ufw allow 993
+$sudo ufw allow 995
+$sudo ufw allow 110
+$sudo ufw allow 25
+$sudo ufw allow 587
+$sudo ufw allow 148
+$sudo ufw allow 143
+$sudo ufw allow 111
+```
+From what my mate said : if ssh are not allowed (22) when UFW is enabled, it will never connect and we need to reinstall the Ubuntu, so be carefull when enabling a port
+Additional information for what port need to be allowed can be checked here:
+https://www.digitalocean.com/community/tutorials/ufw-essentials-common-firewall-rules-and-commands
+
+3. Now lets enable the UFW
+===============
+$sudo ufw enable
+// see the status and see if your port was listed with ufw status //
+sudo ufw status
+===============
+
+# James Database Configuration
+Now we need to configure so our James has database to store the mail.
+===============
+$cd /home/[usernameinserver]
+$vim james3/conf/james-databases.properties
+===============
+Change these : 
+- database.username = username that was created last time in MYSQL 
+- database.password = username password
+- database.url = jdbc:mysql://localhost:3306/james3?useUnicode=true&characterEncoding=utf8&useSSL=false
+- database.driverClassName = com.mysql.jdbc.Driver
+- vendorAdapter.database = MYSQL
+
+Restart the server by running "sudo reboot", just to make sure all the setting are applied.
+
+#Startup the server 
+Before we start, there will be some missing files when starting james.
+
+These are the files :
+- mysql-connector-java-5.1.39-bin.jar ( Either get this from other server, or you can use the newer version here, i havent tried if 
+it will be successfull https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-5.1.47.zip )
+- sunjce_provider.jar (Find them in /javadirectory/jre/lib/ext/ )
+- get these 2 files and copy it to jamesdirectory/lib/
+
+After you get all the files, lets try the server.
+===============
+$cd /home/jactare/james3/bin
+$james start // Personally, just to make sure James did run
+$sudo bash run.sh
+===============
+
+to tell if it was successfull you should see at this line at the log showing up:
+===============
+INFO  [time.stamp] | org.apache.james.app.spring.JamesAppSpringMain | Apache James Server is successfully started in 11426 milliseconds.
+===============
+
+Continue to part 2
+
+**Documentation created June 2019**

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  - Copyright 2012 Google Inc.
+  -
+  - Licensed under the Apache License, Version 2.0 (the "License"); you may not
+  - use this file except in compliance with the License. You may obtain a copy
+  - of the License at
+  -
+  - http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Unless required by applicable law or agreed to in writing, software
+  - distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+  - WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+  - License for the specific language governing permissions and limitations
+  - under the License.
+-->
+<project name="mailet" default="makeJar"  basedir=".">
+  <property name="src" location="src"/>
+  <property name="lib" location="lib"/>
+  <property name="classes" location="classes"/>
+  <property name="project-lib" value="/home/jactare/james3/lib"/>
+  
+  <path id="compile.classpath">
+    <fileset dir="${lib}">
+      <include name="*.jar"/>
+    </fileset>
+    <fileset dir="${project-lib}">
+      <include name="*.jar"/>
+    </fileset>
+  </path>
+
+  <target name="init">
+	  <delete dir="${classes}"/>
+	  <delete dir="${lib}"/>
+	  <mkdir dir="${lib}"/>
+    	  <mkdir dir="${classes}"/>
+  </target>
+
+  <target name="compile" depends="init" description="Compile the Java classes.">
+    <javac destdir="${classes}" debug="true" srcdir="${src}" target="1.8"
+      includeantruntime="false">
+      <classpath refid="compile.classpath"/>
+      <compilerarg value="-Xlint:unchecked"/>
+      <compilerarg value="-Xlint:deprecation" />
+    </javac>
+  </target>
+  <target name="makeJar" depends="compile">
+    <jar destfile="${lib}/custom-mailet.jar"
+         basedir="${classes}"/>
+  </target>
+  
+</project>

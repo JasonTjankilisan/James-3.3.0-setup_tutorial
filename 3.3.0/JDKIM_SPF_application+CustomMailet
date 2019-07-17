@@ -1,0 +1,123 @@
+# Custom Mailet
+
+In this tutorial we are creating our custom mailet (still Need Polishing)
+Before we begin, please read these documantation first for more info - https://james.apache.org/server/3/dev-extend-mailet.html
+
+"**Anything that use [] can be substitued with any name**"
+
+Creating First Custom Mailet : 
+1. We gonna use ANT Compile so make sure ANT is installed in your Ubuntu. (For more information about ANT, Please google if you want to change the setting to your own)
+2. Create a new directory at /home/[username]/ to put all the compiling proccess in there. name it what you want.
+===============
+$cd /home/[username]
+$mkdir javawork
+$cd javawork
+===============
+
+3. Download the "Build.xml" file for compiling and put it on the new directory
+or Copy paste the content (find it in this Github Directory)
+4. create directory with these name : classes, src, lib.
+===============
+$mkdir classes << Put class file that you want to use here or james/lib/
+$mkdir src << Source Code Here for the Mailet
+$mkdir lib << Jar files output
+===============
+
+5. Assuming you have open the the james link, create new file with java extension. 
+copy paste the content java function in the new file. 
+(Since log Function is deprecated, you can just comment it or delete it).
+===============
+$cd src
+$vim MyMailet.java
+===============
+
+Save the file and back to the directory with build.xml file.
+
+6. to complie, type "ant". you can find the jar result in the lib directory and all your mailet inside the jar file.
+7. you can either copy the jar file, or simply move the jar file into james/lib/ to use it.
+===============
+$cd lib
+$mv [yourjavafiles].jar /home/[usernameinserver]/james/lib/
+===============
+
+#Using the custom mailet
+Since our .jar file already in james/lib, we can use the mailet now.
+
+1. go to mailetcontainer.xml (located in james/conf) and add these information inside the "processor" tag with "state = root" : 
+
+===============
+$vim mailetcontainer.xml
+// Fill the information inside the <processor> tag state = root //
+<mailet match="All" class="[package name].[your jar file name]"/>
+===============
+
+after that, save changes and exit the editor.
+
+2. Now we need to edit log4j.properties and add these information on the very bottom of the files.
+===============
+log4j.logger.[package name]=DEBUG, CONS, FILE
+===============
+
+Save changes and exit the editor.
+
+3. Run "sudo reboot" , give it some time, login to the server, run the server (if you turn off the service).
+try to send email to your mail server or send email using your mail server.
+4. a log text with DEBUG should be showing in james/log/james-server.log, that means your mailet is succesfully applied to your james server.  
+
+# ConvertTo7bit and JDKIM Signing Mailet
+( for SPF Record, see this link https://support.rackspace.com/how-to/create-an-spf-txt-record/ )
+
+In order the mail to be safe and confirmed coming from legit sender, they have DKIM and SPF authentication to make sure the mail sended is not a spoof. So we gonna apply the ConvertTo7Bit and DKIM Mailet to sign our email.
+
+1. https://james.apache.org/download.cgi#Apache_jDKIM Download the jar file here and unzip it in your server.
+2. after unzip, go to the JDKIMdirectory/lib/ and copy these files to james/lib/ : 
+>> apache-jdkim-library-0.2.jar
+>> apache-jdkim-mailets-0.2.jar
+
+3. Now we need to edit mailetcontainer.xml. add these to the files : 
+===============
+<mailet match="All" class="org.apache.james.jdkim.mailets.ConvertTo7Bit"/>
+<mailet match="All" class="org.apache.james.jdkim.mailets.DKIMSign">
+
+    <signatureTemplate> v=1; s=[selector]; d=[domain name]; h=from:to:received:received; a=rsa-sha256; bh=; b=;</signatureTemplate>
+	  <privateKey>    
+      [mail server private key]
+    </privateKey>
+	  <privateKeyPassword>    
+      [mail server private key password]
+	  </privateKeyPassword>
+</mailet>
+===============
+
+WARNING : Private key used for SSL/TLS from letsencrypt are different for the DKIM Class. You can generate your private key at :
+https://dkimcore.org/tools/ and the public keys, as well using the generated selector. Make sure to make the private key 
+in mailetcontainer.xml to be 1 line.
+===============
+-----BEGIN RSA PRIVATE KEY-----
+isjdaoisjdaoisjdiajsfafa/asifjaisjfaifajsifajfsa/aidsjaisdjadjaihwonwehw453352gihnsogd+adsjaisjdaijdiajsda ->>> and so on 1 line
+-----END RSA PRIVATE KEY-----
+===============
+
+Save the changes and exit the editor.
+
+4. Run "sudo reboot" to restart the server and apply the setting. Now we need to set the DNS Record for the SPF and DKIM confirmation
+
+# DNS Record Setup
+In this tutorial im using cloudflare, so for those who do not use cloudflare, take it as reference on how to set the record.
+
+- Go to your DNS Record 
+- SPF : Create TXT Record and fill the name with your domain (example.com) and the value with 
+===============
+v=spf1 ip4:[your ipv4 address] ~all
+===============
+
+- DKIM : Create TXT Record and fill the name with [selector name]._domainkey.[domain name] and the value with 
+===============
+v=DKIM1; p=[your domain public key]
+===============
+
+Wait for a few moment for the setting to take changes and try to send email from the thunderbird. 
+in Gmail, you can check the authentication by finding the email and clicking the 3 dot button > Show Original.
+
+
+
