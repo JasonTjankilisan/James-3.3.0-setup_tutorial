@@ -1,0 +1,114 @@
+Based on face to face tutorial + Youtube Video : 
+https://youtu.be/HLoC85hfpfo
+
+Before we begin :
+- Do not install Percona Server and XtraDB Cluster at the same time, it will conflict both of them.
+- Please backup any data in Mysql as percona have its own mysql version modified for percona, 
+so you have to uninstall mysql that you currently have.
+- Avoid sudo reboot on 3 server when percona is installed. percona  
+have some kind of error that made them cannot run the service after reboot.
+
+============================================
+#Configure Percona Repository (Ubuntu 18.04 WSL Edition)
+
+1. Remove apparmor
+sudo apt remove apparmor
+
+2. We need to configure percona repository so we can get the package for percona installation. (Read here for more info)
+https://www.percona.com/doc/percona-repo-config/percona-release.html#installation
+
+3. Open these port for UFW 
+sudo ufw allow 3306
+sudo ufw allow 4444
+sudo ufw allow 4567
+sudo ufw allow 4568
+
+4. Download the repository package, install and update repository
+wget https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+sudo dpkg -i percona-release_latest.generic_all.deb
+sudo apt update
+
+5. Open repository for "Percona Server for MySQL 8.0" as in ps80, update it, and install Percona XtraDB Cluster Server 5.7.
+sudo percona-release setup ps80
+sudo apt-get install percona-xtradb-cluster-server-5.7
+
+6. Check MySQL Service
+sudo mysql - if you can login to MySQL : Installation Successfull
+sudo systemctl status mysql.service - if status (Running) : Installation Successfull
+
+7. Make sure all the server/nodes already been installed with percona
+
+# Configure Node for Database Sync
+
+Example we have 3 Server : 
+Node 1 : pxc1, 111.222.33.190
+Node 2 : pxc2, 101.102.112.125
+Node 3 : pxc3, 89.189.168.98
+
+1. Stop all MySQL Services, do this to all Nodes
+sudo service mysql stop |OR| sudo systemctl stop mysql.service
+
+2. Configure my.cnf file in /etc/mysql/ on Node 1
+sudo nano /etc/mysql/my.cnf
+
+3. Add This inside my.cnf, Its ok to left wsrep_cluster_address blank for now
+[mysqld]
+wsrep_provider=/usr/lib/libgalera_smm.so
+wsrep_cluster_name=pxc-cluster
+wsrep_cluster_address=gcomm://
+wsrep_node_name=pxc1
+wsrep_node_address=111.222.33.190
+wsrep_sst_method=xtrabackup-v2
+wsrep_sst_auth=USERDB:PASS
+pxc_strict_mode=ENFORCING
+binlog_format=ROW
+default_storage_engine=InnoDB
+innodb_autoinc_lock_mode=2
+
+4. Save my.cnf changes and start service on Node 1
+sudo service mysql start |OR| sudo systemctl start mysql.service
+
+5. (Optional) check by login to mysql, and see the wsrep variable, Cluster size should be 1. Exit when done
+sudo mysql
+//inside mysql//
+SHOW STATUS LIKE '%wsrep%'
+exit
+
+6. Create User with authority to change database
+mysql -uroot -p -e "CREATE USER USERDB@localhost IDENTIFIED BY 'PASS'"
+mysql -uroot -p -e "GRANT RELOAD, REPLICATION CLIENT, PROCESS, LOCK TABLES ON *.* TO USERDB@localhost"
+mysql -uroot -p -e "FLUSH PRIVILEGES"
+
+7. Go to Node 2 and update my.cnf file
+//Inside Node 2 /etc/mysql/my.cnf
+[mysqld]
+wsrep_provider=/usr/lib/libgalera_smm.so
+wsrep_cluster_name=pxc-cluster
+wsrep_cluster_address=gcomm://111.222.33.190,101.102.112.125
+wsrep_node_name=pxc2
+wsrep_node_address=101.102.112.125
+wsrep_sst_method=xtrabackup-v2
+wsrep_sst_auth=authuser:authpass
+pxc_strict_mode=ENFORCING
+binlog_format=ROW
+default_storage_engine=InnoDB
+innodb_autoinc_lock_mode=2
+
+8. Save changes and update my.cnf on Node 1
+//Inside Node 1 my.cnf
+wsrep_cluster_address=gcomm://111.222.33.190,101.102.112.125
+
+9.Save changes and start service on Node 2
+sudo service mysql start |OR| sudo systemctl start mysql.service
+
+10. (Optional) check by login to MySQL and check %wsrep% variable, cluster size should be 2
+sudo mysql
+//inside mysql//
+SHOW STATUS LIKE '%wsrep%'
+exit
+
+11. Repeat Step 7 -10 for additional node : Go to soon-to-be-added Node and update my.cnf file, add the node IP to the 
+cluster address and update all the my.cnf on previous node, start the service on the new nodes and check the MySQL login.
+
+You can test the database by adding, dropping database, alter table and values, and see the result on different node, they all should
+display the same value.

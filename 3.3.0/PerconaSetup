@@ -1,6 +1,0 @@
-**This will be written for Percona Server setup + Along side with Database Configuration**
-
-Dont install sudo apt install percona-xtradb-cluster-57!
-But : 
-sudo percona-release ps80;
-install sudo apt install percona-xtradb-cluster-server-5.7;
