@@ -2,13 +2,13 @@ This is a personal note to setup server using ubuntu 18.04 WSL, windows 10, usin
 
 Hopefully in the future can be used again to setup another james server or in case of creating backup server.
 
-in this part 1, we will : 
+part 1 will include : 
 -Get all the necessary files
 -Upload them to our server using SCP
 -Accessing our server using ssh
 -Unpack / Install all the component and checking if it was correctly installed
 
-**you can replace [] with your info**
+**replace [] with your info**
 
 # Get the necessary
 1. Ubuntu 18.04 LTS for windows 10. https://www.microsoft.com/en-us/p/ubuntu-1804-lts/9n9tngvndl3q?activetab=pivot:overviewtab
@@ -19,65 +19,53 @@ in this part 1, we will :
 
 # Setting the environment
 1. Install Ubuntu and follow the instruction.
+
 2. Open Ubuntu, you will be asked to create an username first time running Ubuntu.
-3. After setting up the username, we will create directory to store private key for use later (Contabo).
-===============
-$sudo mkdir .ssh
-===============
+
+3. After setting up the username, we will create directory to store private key for use later (Contabo)
+sudo mkdir .ssh
 
 4. Move the private key to Ubuntu. This private key will be used to access our server.
-===============
-$sudo mv /mnt/c/yourdirectory/contabo /home/[username]/.ssh 
-===============
+sudo mv /mnt/c/yourdirectory/contabo /home/[username]/.ssh 
 Private key is ready to use! (dont forget to check with ls -a)
 
 5. Upload java using the private key to the server.
-===============
-$sudo cd /home/[username]/.ssh
-$sudo scp -i contabo /mnt/yourdirectory/jdk-8u212-linux-x64.tar.gz [usernameinserver]@[domainname]:/home/[usernameinserver]
-===============
+sudo cd /home/[username]/.ssh
+sudo scp -i contabo /mnt/yourdirectory/jdk-8u212-linux-x64.tar.gz [usernameinserver]@[domainname]:/home/[usernameinserver]
 if it successfull, it will show the upload progress
 
-6. After java has been uploaded to the server, lets try login to the server (For this tutorial im gonna write using my domain and username).
-===============
-$cd .ssh
-$sudo ssh -p [port] -i contabo [usernameinserver]@[domain/sub-domainname]
+6. After java has been uploaded to the server, login to the server.
+cd .ssh
+sudo ssh -p [port] -i contabo [usernameinserver]@[domain/sub-domainname]
 Example : $sudo ssh -p 512 -i contabo testname@example.com
-===============
 To summarize, we are connecting through port 512 and using the private key file named "contabo" to login to the server named testname@example.com
 
-7. after successful login, we can unzip the java file for the server to use.
-===============
-$sudo cd /home/[usernameinserver]
-$sudo tar  -xzf jdk-8u152-linux-x64.tar.gz
-$sudo mkdir -p /usr/lib/jvm
-$sudo mv jdk1.8.0_212 /usr/lib/jvm/
-$cd /usr/lib/jvm    
-$sudo ln -s jdk1.8.0_212 java-8-oracle-amd64
-===============
-after we unzip it, we create a directory in /usr/lib/jvm and then move the unzipped file into the directory. after we change directory to the newly made directory, we create a hard link for the java, later it will be used to configure our JAVA_PATH.
+7. after successful login, unzip the java file for the server to use. Create a hardlink for variable JAVA_HOME later
+sudo cd /home/[usernameinserver]
+sudo tar  -xzf jdk-8u152-linux-x64.tar.gz
+sudo mkdir -p /usr/lib/jvm
+sudo mv jdk1.8.0_212 /usr/lib/jvm/
+cd /usr/lib/jvm    
+sudo ln -s jdk1.8.0_212 java-8-oracle-amd64
 
-8. For java to be recognized, we need to set the JAVA_PATH.
-===============
-$cd /home/jactare
-$sudo vim .bash_profile (I use vim in this case, you can use any text editior you want)
+8. For java to be recognized, set the JAVA_HOME. Save Changes to file (Optional) echo $JAVA_HOME and see if the path is correct
+cd /home/jactare
+sudo vim .bash_profile
 // Add these information inside //
 export JAVA_HOME=/usr/lib/jvm/java-8-oracle-amd64
 export PATH=${JAVA_HOME}/bin:${PATH}
-===============
-Save the changes and exit. You can check if java id detected by running "echo $JAVA_HOME" and the output will be the folder destination of where the Java JDK unzipped.
+// Save and Exit //
+echo $JAVA_HOME
 
-9. Now we need to edit permission for our account
-===============
-$sudo vim /etc/sudoers
+9. Edit permission for our account
+sudo vim /etc/sudoers
 // Edit some of the information //
 Defaults        env_keep += "JAVA_HOME"
 Defaults        mail_badpass
 Defaults        secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"
-// Also add this information under %sudo, so we dont need password to use bash function //
+// Also add this information under %sudo //
 %sudo   ALL=(ALL:ALL) ALL
 jactare ALL=(ALL) NOPASSWD: /bin/bash
-===============
 
 # Getting MySQL
 
