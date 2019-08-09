@@ -14,10 +14,10 @@ public class ForwardMail extends GenericMailet{
           private static final Logger logger = LoggerFactory.getLogger(ForwardMail.class);
           private MailetConfig config = null;
 	  private Collection<MailAddress> forwardList;
-	  private final String[] mailRgstr = {"adnanlutfi92@gmail.com","dewabu1@gmail.com",
-	  "yudikarmateknik@gmail.com","meirusfandi100@gmail.com","jason.tjankilisan@gmail.com"};
-	  private final String[] userRgstr = {"adnan","fauzan","yudi","mei","jason"};
-	  private final String domainRgstr = "107.co.id";
+	  private final String[] mailRgstr = {"test1@gmail.com","test2@gmail.com",
+	  "test3@gmail.com","test4@gmail.com","test5@gmail.com"};   //Gmail goes here
+	  private final String[] userRgstr = {"P1","P2","P3","P4","P5"};  // James Email goes here
+	  private final String domainRgstr = "sub.example.com";   // James registered domain
 
           @Override
           public void service(Mail mail) throws MessagingException {
