@@ -95,14 +95,14 @@ Regards, Postmaster XXX.YYY
        </mailet>
          -->
 
-	<!--
-	<mailet match="RecipientIs=jason@107.co.id" class="Forward">
-   	 <forwardTo>jason@107.co.id,jason.tjankilsan@gmail.com</forwardTo>
+	
+	<mailet match="RecipientIs=P1@sub.domain.com" class="Forward">
+   	 <forwardTo>P1@sub.domain.com,test1@gmail.com</forwardTo>
    	 <passThrough>FALSE</passThrough>
    	 <fakeDomainCheck>TRUE</fakeDomainCheck>
     	 <debug>FALSE</debug>
  	</mailet>
-	-->	
+		
 
        <!-- Anti-spam processing -->
        <!-- The following two entries avoid double anti-spam analysis -->
@@ -307,11 +307,9 @@ Regards, Postmaster XXX.YYY
 	
 	<mailet match="All" class="org.apache.james.jdkim.mailets.DKIMSign">
 
-    	  <signatureTemplate> v=1; s=01.06082019.o8e; d=mail01.o8e.net; h=from:to:received:received; a=rsa-sha256; bh=; b=;</signatureTemplate>
+    	  <signatureTemplate> [removed] </signatureTemplate>
 	  <privateKey>    
------BEGIN RSA PRIVATE KEY-----
-MIICXQIBAAKBgQCsP1Ikwkiut9ZxZQ4o9fMH08Vdyt9LP7PxSqhGVgELAOKbhkmH2Hc367DX22HA9sKdFObgHWbbZ85rdmlJiKsm9kMYPwpc34Lx01UtdK3MJ1Rz+pnBQd5nf9m5vAF/BCFB+eocgyGI9AOdbJfkDfEgeq3ld5EbMtMsE8Nz67ITYQIDAQABAoGAU3hwBy47aKff/J2bKhBeEKn4WAZrBR0+xyyFtWgSI1Hvfqypz3H//BJ0ZXaDva4XC2ZIp8y3vpVke8ErLp5TScdT08WQTHxTM7mSk0MMz2q+1n+OBd8i//it8xx73yftkxslBfotpYCKQnaXFWiK1FPrL7mK6YDl63xVx8n5+UECQQDgDM66BDPlj17/6h1QGss81mtPZYj1OdkLf7TTg413+tZfOVflGS49IpCk7K2pvdFfgLpOaQJEGoR7jfJSm+Z5AkEAxM9mRu6O05Gisv7hszlXL2zpNGSc638GYmB8TMRt5L9bGSNE92FrcFd+cfiUQuhk0uA1NONMg7ZGDtYXNOj6KQJAYPJpyWfkJOMC0m21PWI6qxqE2JgwyRu85RLfZd64qj/p3s5rUACzV1TLjfGzu40dOdvzwdYCWwG2bdggEMrQ0QJBALfkHel672MJud7LvrGKi0cZ2VCGDgUQfDOheaL1CsVocsMrLD6E/TFL3y64mDdoEwTiT3SqSQzsW8tzCN38LfkCQQCWELh/VT92HePFJa3QUfyzwUeFFNBqec36/Km0iMMP0satQrQQXrn3nGNID7tuXpNiECQhgXS+D/cKQrR9ol9+
------END RSA PRIVATE KEY-----
+		[Removed]
     	  </privateKey>
 	  <privateKeyPassword>    
 	  </privateKeyPassword>
